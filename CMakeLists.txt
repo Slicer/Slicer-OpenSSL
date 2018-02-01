@@ -5,40 +5,23 @@ cmake_minimum_required(VERSION 2.8.10.2)
 #
 
 if(DEFINED UPLOAD_PACKAGE_SCRIPT)
-
-  set(MIDAS_URL "http://packages.kitware.com")
-  set(FOLDER_ID 203)
-  set(APPLICATION_ID 20)
-  set(PACKAGE_TYPE "Tar.gz Archive")
-
-  set(midas_api_script ${ARCHIVE_DIR}/MidasAPI.cmake)
-  if(NOT EXISTS ${midas_api_script})
-    file(DOWNLOAD ${MIDAS_URL}/api/rest?method=midas.packages.script.download ${midas_api_script})
-  endif()
-  include(${midas_api_script})
-
   message("----------------------")
   message("${PACKAGE_NAME}")
   message("  os: ${PACKAGE_OS}")
   message("  arch: ${PACKAGE_ARCH}")
   message("  version: ${PACKAGE_VERSION}")
 
-  midas_api_package_upload(
-    API_URL ${MIDAS_URL}
-    API_EMAIL ${MIDAS_USER}
-    API_KEY ${MIDAS_API_KEY}
-    FILE "${ARCHIVE_DIR}/${PACKAGE_NAME}"
-    NAME ${PACKAGE_NAME}
-    FOLDER_ID ${FOLDER_ID}
-    APPLICATION_ID ${APPLICATION_ID}
-    OS ${PACKAGE_OS}
-    ARCH ${PACKAGE_ARCH}
-    PACKAGE_TYPE ${PACKAGE_TYPE}
-    SUBMISSION_TYPE Experimental
-    RELEASE "${PACKAGE_VERSION}"
-    RESULT_VARNAME upload_status
+  set(gh_project "Slicer/Slicer-OpenSSL")
+  set(ENV{GITHUB_TOKEN} ${GITHUB_TOKEN})
+
+  execute_process(
+    COMMAND ${GITHUB_RELEASE_EXECUTABLE} release ${gh_project} create ${PACKAGE_VERSION} --publish
     )
-  message("Upload status: ${upload_status}")
+
+  execute_process(
+    COMMAND ${GITHUB_RELEASE_EXECUTABLE} asset ${gh_project} upload ${PACKAGE_VERSION} ${PACKAGE_NAME}
+    WORKING_DIRECTORY ${ARCHIVE_DIR}
+    )
   return()
 endif()
 
@@ -52,23 +35,29 @@ math(EXPR bitness "${CMAKE_SIZEOF_VOID_P} * 8")
 set(binary_archive_name "${source_archive_name}-install-msvc${MSVC_VERSION}-${bitness}")
 set(binary_archive_name_with_config "${binary_archive_name}-${CMAKE_BUILD_TYPE}")
 
-option(UPLOAD_PACKAGES "Upload package(s)" ON)
-option(SUPERBUILD "Build ${proj} Debug and Release tree" ON)
-
-if(UPLOAD_PACKAGES)
-  set(MIDAS_USER "" CACHE STRING "Midas User")
-  set(MIDAS_API_KEY "" CACHE STRING "Midas API Key")
-  set(package_upload_options
-    -DMIDAS_USER:STRING=${MIDAS_USER}
-    -DMIDAS_API_KEY:STRING=${MIDAS_API_KEY}
-    )
-endif()
-
 find_program(PERL_COMMAND "Path to perl executable")
 if(NOT PERL_COMMAND)
   message(FATAL_ERROR "PERL_COMMAND is not set !")
 endif()
 get_filename_component(PERL_BIN_DIR ${PERL_COMMAND} PATH)
+
+option(UPLOAD_PACKAGES "Upload package(s)" ON)
+if(UPLOAD_PACKAGES)
+  find_program(GITHUB_RELEASE_EXECUTABLE "Path to GitHub release executable")
+  if(NOT GITHUB_RELEASE_EXECUTABLE)
+    message(FATAL_ERROR "GITHUB_RELEASE_EXECUTABLE is not set !")
+  endif()
+  set(GITHUB_TOKEN "" CACHE STRING "GitHub token")
+  if("x${GITHUB_TOKEN}" STREQUAL "x")
+    message(FATAL_ERROR "GITHUB_TOKEN is not set !")
+  endif()
+  set(package_upload_options
+    -DGITHUB_RELEASE_EXECUTABLE:STRING=${GITHUB_RELEASE_EXECUTABLE}
+    -DGITHUB_TOKEN:STRING=${GITHUB_TOKEN}
+    )
+endif()
+
+option(SUPERBUILD "Build ${proj} Debug and Release tree" ON)
 
 set(proj ${PROJECT_NAME})
 
@@ -128,6 +117,7 @@ nmake -f ms\\ntdll.mak install")
         -DPACKAGE_VERSION:STRING=${version}
         -DUPLOAD_PACKAGE_SCRIPT:BOOL=ON -P ${CMAKE_CURRENT_LIST_FILE}
       DEPENDEES create-archive
+      EXCLUDE_FROM_MAIN 1
       )
     ExternalProject_Add_StepTargets(${proj} upload-archive)
   endif()
@@ -163,6 +153,17 @@ else()
     INSTALL_COMMAND ""
     )
 
+  if(UPLOAD_PACKAGES)
+    ExternalProject_Add_Step(${proj}-Release upload-archive
+      COMMAND ${CMAKE_COMMAND}
+        --build "${CMAKE_BINARY_DIR}/${proj}-Release"
+        --config Release
+        --target OpenSSL-upload-archive
+      DEPENDEES build
+      )
+    ExternalProject_Add_StepTargets(${proj}-Release upload-archive)
+  endif()
+
   ExternalProject_Add(${proj}-Debug
     DOWNLOAD_COMMAND ""
     SOURCE_DIR "${CMAKE_SOURCE_DIR}"
@@ -170,6 +171,17 @@ else()
     CMAKE_CACHE_ARGS ${ep_cmake_cache_args} -DCMAKE_BUILD_TYPE:STRING=Debug
     INSTALL_COMMAND ""
     )
+
+  if(UPLOAD_PACKAGES)
+    ExternalProject_Add_Step(${proj}-Debug upload-archive
+      COMMAND ${CMAKE_COMMAND}
+        --build "${CMAKE_BINARY_DIR}/${proj}-Debug"
+        --config Debug
+        --target OpenSSL-upload-archive
+      DEPENDEES build
+      )
+    ExternalProject_Add_StepTargets(${proj}-Debug upload-archive)
+  endif()
 
   ExternalProject_Add(${proj}-MultiConfig
     DOWNLOAD_COMMAND ""
