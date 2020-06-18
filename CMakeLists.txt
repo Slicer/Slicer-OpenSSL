@@ -73,6 +73,7 @@ if(NOT SUPERBUILD)
 
   set(config_options
     no-asm
+    no-tests
     --prefix=${CMAKE_BINARY_DIR}/${binary_archive_name_with_config}
     --openssldir=${CMAKE_BINARY_DIR}/${binary_archive_name_with_config}
     )
