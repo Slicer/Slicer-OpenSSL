@@ -71,18 +71,28 @@ set(proj ${PROJECT_NAME})
 
 if(NOT SUPERBUILD)
 
+  set(config_options
+    no-asm
+    --prefix=${CMAKE_BINARY_DIR}/${binary_archive_name_with_config}
+    --openssldir=${CMAKE_BINARY_DIR}/${binary_archive_name_with_config}
+    )
+
   if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     set(config "VC-WIN32")
   elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(config "VC-WIN64A")
   endif()
+
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(config "debug-${config}")
+    list(APPEND config_options "--debug")
+  else()
+    list(APPEND config_options "--release")
   endif()
 
+  list(JOIN config_options " " config_options)
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${proj}-configure.bat"
   "set PATH=%PATH%;${PERL_BIN_DIR}
-perl Configure ${config} no-asm --prefix=${CMAKE_BINARY_DIR}/${binary_archive_name_with_config} --openssldir=${CMAKE_BINARY_DIR}/${binary_archive_name_with_config}
+perl Configure ${config} ${config_options}
 ")
 
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${proj}-build.bat"
