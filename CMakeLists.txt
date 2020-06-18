@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.10.2)
+cmake_minimum_required(VERSION 3.13.4)
 
 #
 # This project allows to configure, build, archive and upload an OpenSSL install tree.
@@ -28,13 +28,16 @@ endif()
 project(OpenSSL)
 include(ExternalProject)
 
-set(OPENSSL_VERSION "1.0.2n" CACHE STRING "Verison of OpenSSL to build")
-set(source_archive_1.0.1h_md5 "9e380f6f9cc497bd2f47c944019239ac")
-set(source_archive_1.0.2n_md5 "2d1a1dcef6169e3ab8fd30b815c3e827")
+set(OPENSSL_VERSION "1.1.1g" CACHE STRING "Verison of OpenSSL to build")
+
+set(source_archive_1.0.1h_hash "MD5=9e380f6f9cc497bd2f47c944019239ac")
+set(source_archive_1.0.2n_hash "MD5=2d1a1dcef6169e3ab8fd30b815c3e827")
+set(source_archive_1.1.1g_hash "SHA256=281e4f13142b53657bd154481e18195b2d477572fdffa8ed1065f73ef5a19777")
+
 set(version ${OPENSSL_VERSION})
-if(NOT DEFINED source_archive_${version}_md5)
+if(NOT DEFINED source_archive_${version}_hash)
   message(FATAL_ERROR "OpenSSL version ${version} is not recognized by ${PROJECT_NAME} build system: "
-                      "Variable 'source_archive_${version}_md5' is not defined !")
+                      "Variable 'source_archive_${version}_hash' is not defined !")
 endif()
 string(REPLACE "." "_" version_underscore ${version})
 set(source_archive_name "OpenSSL_${version_underscore}")
@@ -97,7 +100,7 @@ nmake -f ms\\ntdll.mak install")
   ExternalProject_Add(${proj}
     # Use github archive instead of the one hosted on openssl.org because of CMake bug #13251
     URL "https://github.com/openssl/openssl/archive/${source_archive_name}.tar.gz"
-    URL_MD5 "${source_archive_${version}_md5}"
+    URL_HASH "${source_archive_${version}_hash}"
     DOWNLOAD_DIR ${CMAKE_CURRENT_BINARY_DIR}
     SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
     BUILD_IN_SOURCE 1
