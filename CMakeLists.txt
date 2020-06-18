@@ -73,12 +73,18 @@ set(proj ${PROJECT_NAME})
 
 if(NOT SUPERBUILD)
 
+  set(do_script "")
+
   if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     set(config "VC-WIN32")
-    set(do_script "do_ms.bat")
+    if(OPENSSL_VERSION VERSION_LESS "1.1.0")
+      set(do_script "call ms\\do_ms.bat")
+    endif()
   elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(config "VC-WIN64A")
-    set(do_script "do_win64a.bat")
+    if(OPENSSL_VERSION VERSION_LESS "1.1.0")
+      set(do_script "call ms\\do_win64a.bat")
+    endif()
   endif()
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(config "debug-${config}")
@@ -87,15 +93,21 @@ if(NOT SUPERBUILD)
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${proj}-configure.bat"
   "set PATH=%PATH%;${PERL_BIN_DIR}
 perl Configure ${config} no-asm --prefix=${CMAKE_BINARY_DIR}/${binary_archive_name_with_config}
-call ms\\${do_script}")
+${do_script}
+")
+
+  set(nmake_options "")
+  if(OPENSSL_VERSION VERSION_LESS "1.1.0")
+    set(nmake_options "-f ms\\ntdll.mak")
+  endif()
 
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${proj}-build.bat"
   "set PATH=%PATH%;${PERL_BIN_DIR}
-nmake -f ms\\ntdll.mak")
+nmake ${nmake_options}")
 
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${proj}-install.bat"
   "set PATH=%PATH%;${PERL_BIN_DIR}
-nmake -f ms\\ntdll.mak install")
+nmake ${nmake_options} install")
 
   ExternalProject_Add(${proj}
     # Use github archive instead of the one hosted on openssl.org because of CMake bug #13251
