@@ -92,7 +92,7 @@ if(NOT SUPERBUILD)
 
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${proj}-configure.bat"
   "set PATH=%PATH%;${PERL_BIN_DIR}
-perl Configure ${config} no-asm --prefix=${CMAKE_BINARY_DIR}/${binary_archive_name_with_config}
+perl Configure ${config} no-asm --prefix=${CMAKE_BINARY_DIR}/${binary_archive_name_with_config} --openssldir=${CMAKE_BINARY_DIR}/${binary_archive_name_with_config}
 ${do_script}
 ")
 
