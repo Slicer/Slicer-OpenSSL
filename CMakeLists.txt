@@ -30,8 +30,6 @@ include(ExternalProject)
 
 set(OPENSSL_VERSION "1.1.1g" CACHE STRING "Verison of OpenSSL to build")
 
-set(source_archive_1.0.1h_hash "MD5=9e380f6f9cc497bd2f47c944019239ac")
-set(source_archive_1.0.2n_hash "MD5=2d1a1dcef6169e3ab8fd30b815c3e827")
 set(source_archive_1.1.1g_hash "SHA256=281e4f13142b53657bd154481e18195b2d477572fdffa8ed1065f73ef5a19777")
 
 set(version ${OPENSSL_VERSION})
@@ -73,18 +71,10 @@ set(proj ${PROJECT_NAME})
 
 if(NOT SUPERBUILD)
 
-  set(do_script "")
-
   if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     set(config "VC-WIN32")
-    if(OPENSSL_VERSION VERSION_LESS "1.1.0")
-      set(do_script "call ms\\do_ms.bat")
-    endif()
   elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(config "VC-WIN64A")
-    if(OPENSSL_VERSION VERSION_LESS "1.1.0")
-      set(do_script "call ms\\do_win64a.bat")
-    endif()
   endif()
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(config "debug-${config}")
@@ -93,21 +83,15 @@ if(NOT SUPERBUILD)
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${proj}-configure.bat"
   "set PATH=%PATH%;${PERL_BIN_DIR}
 perl Configure ${config} no-asm --prefix=${CMAKE_BINARY_DIR}/${binary_archive_name_with_config} --openssldir=${CMAKE_BINARY_DIR}/${binary_archive_name_with_config}
-${do_script}
 ")
-
-  set(nmake_options "")
-  if(OPENSSL_VERSION VERSION_LESS "1.1.0")
-    set(nmake_options "-f ms\\ntdll.mak")
-  endif()
 
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${proj}-build.bat"
   "set PATH=%PATH%;${PERL_BIN_DIR}
-nmake ${nmake_options}")
+nmake")
 
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${proj}-install.bat"
   "set PATH=%PATH%;${PERL_BIN_DIR}
-nmake ${nmake_options} install")
+nmake install")
 
   ExternalProject_Add(${proj}
     # Use github archive instead of the one hosted on openssl.org because of CMake bug #13251
