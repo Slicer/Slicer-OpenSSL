@@ -1,5 +1,9 @@
 
-This project allows to configure, build, archive and upload an OpenSSL install tree.
+# overview
+
+This project has two roles:
+* configure, build, archive and automatically upload Release and Debug OpenSSL install trees as [release assets](https://github.com/Slicer/Slicer-OpenSSL/releases)
+* organize OpenSSL source archives in a [dedicated release](https://github.com/Slicer/Slicer-OpenSSL/releases/tag/sources)
 
 For any given Visual Studio generator, three archives are generated and uploaded to the corresponding [GitHub release](https://github.com/Slicer/Slicer-OpenSSL/releases):
 
@@ -22,18 +26,94 @@ For example:
 
 # prerequisites
 
-* [Visual Studio](https://www.visualstudio.com/), [CMake](https://cmake.org/), [StawberryPerl](http://strawberryperl.com/) and [github-release](https://github.com/j0057/github-release#readme).
+* install [Visual Studio](https://www.visualstudio.com/), [CMake](https://cmake.org/), [StawberryPerl](http://strawberryperl.com/) and [github-release](https://github.com/j0057/github-release#readme).
 
-# instructions
+# guides
 
-Steps using cmake-gui:
+## upload a new source archives
+
+1. Download official OpenSSL archive from https://www.openssl.org/source/
+2. Upload archive in the [source release](https://github.com/Slicer/Slicer-OpenSSL/releases/tag/sources)
+3. Update release description
+
+## add support for building a new version of OpenSSL
+
+1. Attempt to configure and build OpenSSL disabling upload (see instructions below)
+2. Two possible scenarios:
+  - If it succeeds, publish a new tag associated with the current master branch
+  - If it fails, update the [CMakeLists.txt](CMakeLists.txt) and try again
+
+## build and upload install tree archives for a specific Visual Studio version
+
+Archives for OpenSSL version associated with the CMake variable `OPENSSL_VERSION` are built. Inspect the
+[CMakeLists.txt](CMakeLists.txt) to find out which version is built by default.
 
 1. Git clone this repository (or download `CMakeLists.txt`) into a folder such as `C:\path\Slicer-OpenSSL`
 2. Create a build folder such as `C:\path\Slicer-OpenSSL-build`
-3. Run cmake-gui, set source code and binary paths to the folders listed above, and press Configure
-4. Choose a generator
-5. Set configuration variables such as `PERL_COMMAND`, `GITHUB_RELEASE_EXECUTABLE` and `GITHUB_TOKEN`, then press Generate to create the build files
-6. Open the solution file in `C:\path\Slicer-OpenSSL-build` and build the solution
+3. Open Visual Studio terminal for the desired version and architecture
+4. Configure specifying matching Visual Studio generator and architecture as well as `PERL_COMMAND`, `GITHUB_RELEASE_EXECUTABLE` and `GITHUB_TOKEN` options:
+    ```
+    set PERL_COMMAND=C:\StrawberryPerl-x64\perl\bin\perl.exe
+    set GITHUB_RELEASE_EXECUTABLE=D:\Support\github-release-venv\Scripts\githubrelease.exe
+    set GITHUB_TOKEN=xyz
+
+    cd C:\path\Slicer-OpenSSL-build
+    cmake.exe ^
+      -DPERL_COMMAND=%PERL_COMMAND% ^
+      -DGITHUB_RELEASE_EXECUTABLE=%GITHUB_RELEASE_EXECUTABLE% ^
+      -DGITHUB_TOKEN=%GITHUB_TOKEN% ^
+      -G "Visual Studio 16 2019" ^
+      -A x64 ^
+      -DUPLOAD_PACKAGES=ON ^
+    ../Slicer-OpenSSL
+    ```
+5. Build
+    Since `UPLOAD_PACKAGES` is `ON`, install tree archives are automatically uploaded as
+    assets associated with the release named after the selected `OPENSSL_VERSION`.
+    ```
+    cmake.exe --build .
+    ```
+6. Once archives are uploaded, update the release description (see below)
+
+## update release description
+
+The following snippet was designed for updating the description of releases organizing
+install tree archives and it should be executed in bash.
+
+It also expects `githubrelease` command line tool to be in the `PATH`.
+
+
+```bash
+version=1.1.1g
+
+cd /tmp
+
+#
+# download assets
+#
+githubrelease asset Slicer/Slicer-OpenSSL download ${version}
+
+#
+# compute SHA256 and generate release description
+#
+description_file=/tmp/Slicer-OpenSSL-${version}-release-description.txt
+download_url_base=https://github.com/Slicer/Slicer-OpenSSL/releases/download/${version}
+IFS=$'\n'
+for line in $(sha256sum OpenSSL_${version//./_}*); do
+  sha256=$(echo ${line} | cut -f1 -d" ");
+  file=$(echo ${line} | cut -f3 -d" ");
+  md5sum=$(md5sum ${file} | cut -f1 -d" ")
+  file=${file##*/}
+  echo -e "* [${file}]($download_url_base/${file})\n  * SHA256: \`${sha256}\`";
+done > ${description_file}
+
+cat ${description_file}
+
+#
+# Update release description
+#
+githubrelease release Slicer/Slicer-OpenSSL edit ${version} --body "$(cat ${description_file})"
+```
 
 # license
 
