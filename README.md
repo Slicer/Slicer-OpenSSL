@@ -104,7 +104,7 @@ for line in $(sha256sum OpenSSL_${version//./_}*); do
   file=$(echo ${line} | cut -f3 -d" ");
   md5sum=$(md5sum ${file} | cut -f1 -d" ")
   file=${file##*/}
-  echo -e "* [${file}]($download_url_base/${file})\n  * SHA256: \`${sha256}\`";
+  echo -e "* [${file}]($download_url_base/${file})\n  * SHA256: \`${sha256}\`\n  * MD5: \`${md5sum}\`";
 done > ${description_file}
 
 cat ${description_file}
